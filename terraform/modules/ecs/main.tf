@@ -1,6 +1,6 @@
 resource "aws_cloudwatch_log_group" "app" {
   name              = "/ecs/${var.project_name}-app"
-  retention_in_days = 14
+  retention_in_days = 7
 }
 
 resource "aws_ecs_cluster" "this" {
@@ -73,11 +73,17 @@ resource "aws_iam_role" "task_role" {
 
 resource "aws_security_group" "ecs_tasks" {
   name        = "${var.project_name}-ecs-sg"
-  description = "Allow inbound from ALB only"
+  description = "Allow inbound from ALB only (least-privilege)"
   vpc_id      = var.vpc_id
 
-  # No ingress rules here; ALB module attaches its own SG/ingress referencing this SG.
-  # We'll allow ingress from ALB SG via ALB module creation (safer / modular).
+  ingress {
+    description      = "App port from ALB"
+    from_port        = var.container_port
+    to_port          = var.container_port
+    protocol         = "tcp"
+    security_groups  = [var.alb_security_group_id]
+  }
+
   egress {
     from_port   = 0
     to_port     = 0
@@ -113,6 +119,14 @@ resource "aws_ecs_task_definition" "app" {
         }
       ]
 
+      healthCheck = {
+        command     = ["CMD-SHELL", "curl -f http://localhost:${var.container_port}/health || exit 1"]
+        interval    = 30
+        timeout     = 5
+        retries     = 3
+        startPeriod = 10
+      }
+
       environment = [
         for k, v in var.app_environment : {
           name  = k
@@ -133,18 +147,35 @@ resource "aws_ecs_task_definition" "app" {
 }
 
 # NOTE: Service uses ALB target group created in ALB module via attachment.
+locals {
+  # ALB target group ARN looks like:
+  # arn:aws:elasticloadbalancing:REGION:ACCOUNT:targetgroup/TG_NAME/TG_ID
+  # CloudWatch metric dimensions for UnHealthyHostCount expect the part after "targetgroup/"
+  alb_target_group_dimension = (
+    length(split("targetgroup/", var.alb_target_group_arn)) > 1
+    ? split("targetgroup/", var.alb_target_group_arn)[1]
+    : var.alb_target_group_arn
+  )
+}
+
 resource "aws_ecs_service" "app" {
-  name            = "${var.project_name}-service"
-  cluster         = aws_ecs_cluster.this.id
-  desired_count   = var.desired_count
-  launch_type     = "FARGATE"
-  platform_version = "1.4.0"
+  name              = "${var.project_name}-service"
+  cluster           = aws_ecs_cluster.this.id
+  desired_count     = var.desired_count
+  launch_type       = "FARGATE"
+  platform_version  = "1.4.0"
 
   task_definition = aws_ecs_task_definition.app.arn
 
+  load_balancer {
+    target_group_arn = var.alb_target_group_arn
+    container_name   = "${var.project_name}-container"
+    container_port   = var.container_port
+  }
+
   network_configuration {
-    subnets         = var.public_subnet_ids
-    security_groups = [aws_security_group.ecs_tasks.id]
+    subnets          = var.public_subnet_ids
+    security_groups  = [aws_security_group.ecs_tasks.id]
     assign_public_ip = true
   }
 
@@ -160,4 +191,27 @@ resource "aws_ecs_service" "app" {
   depends_on = [
     aws_ecs_task_definition.app
   ]
+}
+
+# Alarm on ALB target group unhealthy hosts to catch availability regressions.
+resource "aws_cloudwatch_metric_alarm" "alb_unhealthy_hosts" {
+  alarm_name          = "${var.project_name}-alb-unhealthy-hosts"
+  comparison_operator = "GreaterThanOrEqualToThreshold"
+  evaluation_periods  = 1
+  metric_name         = "UnHealthyHostCount"
+  namespace           = "AWS/ApplicationELB"
+  period              = 60
+  statistic           = "Maximum"
+  threshold           = 1
+
+  dimensions = {
+    TargetGroup = local.alb_target_group_dimension
+  }
+
+  alarm_description = "Triggers when at least one unhealthy host is detected for the target group."
+  treat_missing_data = "notBreaching"
+
+  lifecycle {
+    prevent_destroy = false
+  }
 }

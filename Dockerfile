@@ -18,6 +18,9 @@ FROM node:20-alpine AS runtime
 # Create non-root user
 RUN addgroup -S appgroup && adduser -S appuser -G appgroup
 
+# Install curl for ECS container healthCheck (curl used by healthCheck command)
+RUN apk add --no-cache curl
+
 WORKDIR /app
 
 # Copy node_modules and app from builder stage

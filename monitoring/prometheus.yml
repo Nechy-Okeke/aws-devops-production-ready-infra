@@ -6,8 +6,7 @@ scrape_configs:
   - job_name: "node_app"
     metrics_path: /metrics
     scheme: http
-    # For local runs (docker-compose), target the app container name `app`.
-    # For AWS/ECS, update this file (or use a different mechanism) to scrape
-    # the ALB DNS name if you expose /metrics via the listener.
+    # For local runs (docker-compose), docker-compose will set ALB_DNS_NAME=app:3000 by default.
+    # For AWS/ECS, set ALB_DNS_NAME to your ALB DNS name and keep this compose file out of the pipeline.
     static_configs:
-      - targets: ["app:3000"]
+      - targets: ["${ALB_DNS_NAME}:80"]

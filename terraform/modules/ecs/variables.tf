@@ -43,6 +43,16 @@ variable "ecs_memory" {
   description = "ECS task memory"
 }
 
+variable "alb_target_group_arn" {
+  type        = string
+  description = "ALB target group ARN to attach ECS service"
+}
+
+variable "alb_security_group_id" {
+  type        = string
+  description = "Security group ID of the ALB (used to restrict inbound to ECS tasks only from ALB)"
+}
+
 variable "app_environment" {
   type        = map(string)
   description = "Environment variables passed to container"

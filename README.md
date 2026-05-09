@@ -1,6 +1,6 @@
 # Metrics + Health Node.js on AWS (ECS Fargate + ALB + ECR) — Production-ready DevOps Practical
 
-This repo provisions and deploys a small Node.js service that exposes:
+#This repo provisions and deploys a small Node.js service that exposes:
 - `GET /health` (liveness)
 - `GET /metrics` (Prometheus-compatible metrics)
 
@@ -47,6 +47,7 @@ It also includes:
 ### Why S3 + DynamoDB for Terraform backend locking?
 - Prevents concurrent `terraform apply` runs from corrupting state.
 - S3 stores state; DynamoDB provides a lock with `PAY_PER_REQUEST`.
+- This design is compatible with automated CI pipelines (state is locked during applies).
 
 ---
 
@@ -97,9 +98,13 @@ README.md
    - `TF_LOCK_TABLE` (DynamoDB lock table name)
    - `TF_STATE_KEY` (optional override; default `terraform/terraform.tfstate`)
 
-> Note on Terraform backend:
-> Terraform backend blocks require values at `terraform init` time for many CI systems.
-> This repo uses `terraform init` with `-backend-config` in GitHub Actions.
+> Note on Terraform backend (state locking)
+> Terraform backends require S3/Dynamo resources to exist **before** `terraform init`.
+> This repo uses a two-phase deploy in GitHub Actions:
+> 1) **Bootstrap** (`terraform/bootstrap`) to create:
+>    - S3 bucket (state)
+>    - DynamoDB table (locking)
+> 2) **Main apply** (`terraform/`) using `terraform init -backend-config=...`.
 
 ---
 
@@ -118,7 +123,8 @@ docker compose up -d
 - `http://localhost:3000`
   - default credentials (Grafana image default): `admin / admin`
 
-> `monitoring/prometheus.yml` is set to scrape the container name `app:3000` for local docker-compose usage.
+> `monitoring/prometheus.yml` scrapes `${ALB_DNS_NAME}:80`.
+> - `monitoring/docker-compose.yml` sets `ALB_DNS_NAME=app:3000` for local use.
 
 ---
 
@@ -144,7 +150,7 @@ On every push to `main`, `.github/workflows/deploy.yml` performs:
 3. **Build Docker image**
 4. **Push image to ECR**
    - tags: `${GITHUB_SHA}` and `latest`
-5. **Terraform init + validate**
+5. **Terraform init + validate** (main stack, with backend configured for the bootstrapped bucket/table)
 6. **Terraform apply**
    - updates ECS task definition image tag and deploys service
 

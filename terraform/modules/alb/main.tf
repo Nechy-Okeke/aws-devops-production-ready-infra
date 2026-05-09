@@ -30,6 +30,8 @@ resource "aws_lb" "this" {
   security_groups    = [aws_security_group.alb.id]
   subnets            = var.public_subnet_ids
 
+  deletion_protection = true
+
   tags = {
     Name = "${var.project_name}-alb"
   }
@@ -56,10 +58,42 @@ resource "aws_lb_target_group" "app" {
   }
 }
 
+# ACM placeholder: in production, replace the domain and ensure DNS validation records
+# are created/managed. This certificate is only a scaffold to wire HTTPS listener.
+resource "aws_acm_certificate" "placeholder" {
+  domain_name       = var.acm_certificate_domain_name
+  validation_method = var.acm_certificate_validation_method
+
+  lifecycle {
+    create_before_destroy = true
+  }
+
+  tags = {
+    Name = "${var.project_name}-acm-placeholder"
+  }
+}
+
 resource "aws_lb_listener" "http" {
   load_balancer_arn = aws_lb.this.arn
-  port              = var.listener_port
+  port              = 80
   protocol          = "HTTP"
+
+  default_action {
+    type = "redirect"
+    redirect {
+      port        = "443"
+      protocol    = "HTTPS"
+      status_code = "HTTP_301"
+    }
+  }
+}
+
+resource "aws_lb_listener" "https" {
+  load_balancer_arn = aws_lb.this.arn
+  port              = 443
+  protocol          = "HTTPS"
+  ssl_policy        = "ELBSecurityPolicy-2016-08"
+  certificate_arn   = aws_acm_certificate.placeholder.arn
 
   default_action {
     type             = "forward"

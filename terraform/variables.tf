@@ -65,3 +65,13 @@ variable "alb_listener_port" {
   description = "ALB listener port for HTTP"
   default     = 80
 }
+
+variable "state_bucket_name" {
+  type        = string
+  description = "Deterministic S3 bucket name for Terraform state (created via terraform/bootstrap)."
+}
+
+variable "lock_table_name" {
+  type        = string
+  description = "Deterministic DynamoDB table name for Terraform state locking (created via terraform/bootstrap)."
+}

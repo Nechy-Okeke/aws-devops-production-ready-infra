@@ -32,3 +32,15 @@ variable "container_port" {
   type        = number
   description = "Container port"
 }
+
+variable "acm_certificate_domain_name" {
+  type        = string
+  description = "Placeholder domain name used to request an ACM certificate. Replace/validate with a real domain in production."
+  default     = "example.com"
+}
+
+variable "acm_certificate_validation_method" {
+  type        = string
+  description = "Placeholder ACM validation method."
+  default     = "DNS"
+}
