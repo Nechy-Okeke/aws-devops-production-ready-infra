@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node app.js",
     "lint": "node -e \"console.log('Lint: skipped (no linter configured)')\"",
-    "test": "node -e \"require('http').get('http://localhost:3000/health', (r)=>{process.exit(r.statusCode===200?0:1)}).on('error',()=>process.exit(1))\""
+    "test": "node -e \"(async () => { const http = require('http'); process.env.PORT='0'; const { server } = require('./app'); const getPort = () => { const addr = server.address && server.address(); return addr && addr.port; }; const wait = ms => new Promise(r => setTimeout(r, ms)); const waitForServer = async () => { for (let i=0;i<50;i++){ const p=getPort(); if(p) return p; await wait(100);} throw new Error('Server did not start listening'); }; const port = await waitForServer(); const statusCode = await new Promise((resolve, reject) => { const req = http.get({ hostname:'127.0.0.1', port, path:'/health', timeout:5000 }, (res) => resolve(res.statusCode)); req.on('error', reject); req.on('timeout', () => { req.destroy(new Error('timeout')); }); }); server.close(() => process.exit(statusCode===200?0:1)); })().catch(e=>{ console.error(e); process.exit(1); });\""
   },
   "author": "blackboxai",
   "license": "MIT",
