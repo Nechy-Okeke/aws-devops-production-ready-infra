@@ -57,7 +57,10 @@ app.get("/", (req, res) => {
   res.status(200).send("metrics-health-service");
 });
 
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   // eslint-disable-next-line no-console
   console.log(`Service listening on port ${PORT}`);
 });
+
+// Export app for test runners / require() usage
+module.exports = { app, server };
