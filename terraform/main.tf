@@ -36,6 +36,7 @@ module "ecs" {
   source = "./modules/ecs"
 
   project_name       = var.project_name
+  aws_region         = var.aws_region
   vpc_id             = module.vpc.vpc_id
   public_subnet_ids = module.vpc.public_subnet_ids
 
