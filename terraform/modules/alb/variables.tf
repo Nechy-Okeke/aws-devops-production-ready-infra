@@ -1,6 +1,11 @@
 variable "project_name" {
   type        = string
-  description = "Project name prefix"
+  description = "Project name prefix (may be longer than AWS 32-char limits; avoid using for strict name resources)"
+}
+
+variable "name_prefix" {
+  type        = string
+  description = "Short deterministic prefix (<= 24 chars recommended) for resources with strict name limits (ALB/TG/Security Group)."
 }
 
 variable "vpc_id" {

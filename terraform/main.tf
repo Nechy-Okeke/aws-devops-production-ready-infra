@@ -17,6 +17,10 @@ terraform {
 
 # Root module wiring
 
+locals {
+  # AWS ALB/TG name limit is 32 chars. Keep a short deterministic prefix.
+  name_prefix = substr(var.project_name, 0, 24)
+}
 
 module "vpc" {
   source = "./modules/vpc"

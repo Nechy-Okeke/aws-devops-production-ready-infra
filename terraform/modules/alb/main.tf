@@ -1,5 +1,5 @@
 resource "aws_security_group" "alb" {
-  name        = "${var.project_name}-alb-sg"
+  name        = "${var.name_prefix}-alb-sg"
   description = "ALB security group"
   vpc_id      = var.vpc_id
 
@@ -19,12 +19,12 @@ resource "aws_security_group" "alb" {
   }
 
   tags = {
-    Name = "${var.project_name}-alb-sg"
+    Name = "${var.name_prefix}-alb-sg"
   }
 }
 
 resource "aws_lb" "this" {
-  name               = "${var.project_name}-alb"
+  name               = "${var.name_prefix}-alb"
   load_balancer_type = "application"
   internal           = false
   security_groups    = [aws_security_group.alb.id]
@@ -33,12 +33,12 @@ resource "aws_lb" "this" {
   enable_deletion_protection = true
 
   tags = {
-    Name = "${var.project_name}-alb"
+    Name = "${var.name_prefix}-alb"
   }
 }
 
 resource "aws_lb_target_group" "app" {
-  name        = "${var.project_name}-tg"
+  name        = "${var.name_prefix}-tg"
   port        = var.container_port
   protocol    = "HTTP"
   target_type = "ip"
@@ -54,7 +54,7 @@ resource "aws_lb_target_group" "app" {
   }
 
   tags = {
-    Name = "${var.project_name}-tg"
+    Name = "${var.name_prefix}-tg"
   }
 }
 
@@ -69,7 +69,7 @@ resource "aws_acm_certificate" "placeholder" {
   }
 
   tags = {
-    Name = "${var.project_name}-acm-placeholder"
+    Name = "${var.name_prefix}-acm-placeholder"
   }
 }
 
