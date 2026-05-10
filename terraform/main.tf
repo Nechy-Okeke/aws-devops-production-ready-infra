@@ -1,6 +1,12 @@
-# Root module wiring
-
 terraform {
+  backend "s3" {
+    bucket         = "aws-devops-production-ready-infra-tfstate-669890779296"
+    key            = "terraform/terraform.tfstate"
+    region         = "us-east-1"
+    dynamodb_table = "aws-devops-production-ready-infra-tflock"
+    encrypt        = true
+  }
+
   required_providers {
     aws = {
       source  = "hashicorp/aws"
@@ -9,14 +15,8 @@ terraform {
   }
 }
 
+# Root module wiring
 
-module "s3_backend" {
-  source = "./modules/s3_backend"
-
-  project_name      = var.project_name
-  state_bucket_name = var.state_bucket_name
-  lock_table_name   = var.lock_table_name
-}
 
 module "vpc" {
   source = "./modules/vpc"
