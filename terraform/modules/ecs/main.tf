@@ -215,3 +215,59 @@ resource "aws_cloudwatch_metric_alarm" "alb_unhealthy_hosts" {
     prevent_destroy = false
   }
 }
+
+locals {
+  ecs_alarm_enabled = var.enable_ecs_resource_alarms
+}
+
+# CPU alarm (optional, enabled by default)
+resource "aws_cloudwatch_metric_alarm" "ecs_cpu_high" {
+  count = local.ecs_alarm_enabled ? 1 : 0
+
+  alarm_name          = "${var.project_name}-ecs-cpu-high"
+  comparison_operator = "GreaterThanThreshold"
+  evaluation_periods  = 1
+  metric_name         = "CPUUtilization"
+  namespace           = "AWS/ECS"
+  period              = 300
+  statistic           = "Average"
+  threshold           = 70
+
+  dimensions = {
+    ClusterName = aws_ecs_cluster.this.name
+    ServiceName = aws_ecs_service.app.name
+  }
+
+  alarm_description = "Triggers when ECS CPU utilization is high for the service."
+  treat_missing_data = "notBreaching"
+
+  lifecycle {
+    prevent_destroy = false
+  }
+}
+
+# Memory alarm (optional, enabled by default)
+resource "aws_cloudwatch_metric_alarm" "ecs_memory_high" {
+  count = local.ecs_alarm_enabled ? 1 : 0
+
+  alarm_name          = "${var.project_name}-ecs-memory-high"
+  comparison_operator = "GreaterThanThreshold"
+  evaluation_periods  = 1
+  metric_name         = "MemoryUtilization"
+  namespace           = "AWS/ECS"
+  period              = 300
+  statistic           = "Average"
+  threshold           = 75
+
+  dimensions = {
+    ClusterName = aws_ecs_cluster.this.name
+    ServiceName = aws_ecs_service.app.name
+  }
+
+  alarm_description = "Triggers when ECS memory utilization is high for the service."
+  treat_missing_data = "notBreaching"
+
+  lifecycle {
+    prevent_destroy = false
+  }
+}

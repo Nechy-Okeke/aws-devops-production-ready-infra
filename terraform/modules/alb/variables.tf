@@ -46,6 +46,12 @@ variable "acm_certificate_domain_name" {
 
 variable "acm_certificate_validation_method" {
   type        = string
-  description = "Placeholder ACM validation method."
+  description = "ACM validation method."
   default     = "DNS"
+}
+
+variable "acm_route53_zone_id" {
+  type        = string
+  description = "Optional Route53 hosted zone ID to perform DNS validation for ACM. If not set, HTTPS listener/certificate will be omitted (HTTP redirect remains)."
+  default     = ""
 }

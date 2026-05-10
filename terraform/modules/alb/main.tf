@@ -58,9 +58,14 @@ resource "aws_lb_target_group" "app" {
   }
 }
 
-# ACM placeholder: in production, replace the domain and ensure DNS validation records
-# are created/managed. This certificate is only a scaffold to wire HTTPS listener.
-resource "aws_acm_certificate" "placeholder" {
+locals {
+  acm_is_placeholder = var.acm_certificate_domain_name == "example.com"
+  acm_can_validate   = (!local.acm_is_placeholder) && (var.acm_route53_zone_id != "")
+}
+
+# DNS-validated ACM certificate (created only when a real domain + Route53 zone are provided)
+resource "aws_acm_certificate" "this" {
+  count              = local.acm_can_validate ? 1 : 0
   domain_name       = var.acm_certificate_domain_name
   validation_method = var.acm_certificate_validation_method
 
@@ -69,8 +74,28 @@ resource "aws_acm_certificate" "placeholder" {
   }
 
   tags = {
-    Name = "${var.name_prefix}-acm-placeholder"
+    Name = "${var.name_prefix}-acm"
   }
+}
+
+# Create Route53 records required for ACM DNS validation
+resource "aws_route53_record" "acm_validation" {
+  count   = local.acm_can_validate ? length(aws_acm_certificate.this[0].domain_validation_options) : 0
+  zone_id = var.acm_route53_zone_id
+  name    = aws_acm_certificate.this[0].domain_validation_options[count.index].resource_record_name
+  type    = aws_acm_certificate.this[0].domain_validation_options[count.index].resource_record_type
+  ttl     = 60
+
+  records = [
+    aws_acm_certificate.this[0].domain_validation_options[count.index].resource_record_value
+  ]
+}
+
+resource "aws_acm_certificate_validation" "this" {
+  count = local.acm_can_validate ? 1 : 0
+
+  certificate_arn         = aws_acm_certificate.this[0].arn
+  validation_record_fqdns = [for r in aws_route53_record.acm_validation : r.fqdn]
 }
 
 resource "aws_lb_listener" "http" {
@@ -88,15 +113,19 @@ resource "aws_lb_listener" "http" {
   }
 }
 
+# HTTPS listener exists only when the certificate is created (and validation records are supplied)
 resource "aws_lb_listener" "https" {
+  count             = local.acm_can_validate ? 1 : 0
   load_balancer_arn = aws_lb.this.arn
   port              = 443
   protocol          = "HTTPS"
   ssl_policy        = "ELBSecurityPolicy-2016-08"
-  certificate_arn   = aws_acm_certificate.placeholder.arn
+  certificate_arn   = aws_acm_certificate.this[0].arn
 
   default_action {
     type             = "forward"
     target_group_arn = aws_lb_target_group.app.arn
   }
+
+  depends_on = [aws_acm_certificate_validation.this]
 }

@@ -62,3 +62,9 @@ variable "app_environment" {
   type        = map(string)
   description = "Environment variables passed to container"
 }
+
+variable "enable_ecs_resource_alarms" {
+  type        = bool
+  description = "Enable additional ECS/Service CloudWatch alarms (CPU/Memory)."
+  default     = true
+}
