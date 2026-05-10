@@ -4,6 +4,10 @@ on:
   push:
     branches: [ "main" ]
 
+concurrency:
+  group: terraform-prod-${{ github.ref }}
+  cancel-in-progress: false
+
 permissions:
   id-token: write
   contents: read
@@ -216,4 +220,7 @@ jobs:
           TF_VAR_project_name: "aws-devops-production-ready-infra"
           TF_VAR_aws_region: ${{ env.AWS_REGION }}
         run: |
-          terraform apply -auto-approve "${{ format('tfplan-{0}.out', github.sha) }}"
+          PLAN_FILE="tfplan-${GITHUB_SHA}.out"
+          echo "Using plan file: ${PLAN_FILE}"
+          test -f "${PLAN_FILE}" || (echo "Plan file not found: ${PLAN_FILE}" && ls -la && exit 1)
+          terraform apply -auto-approve "${PLAN_FILE}"
