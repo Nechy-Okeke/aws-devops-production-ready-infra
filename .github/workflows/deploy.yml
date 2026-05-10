@@ -143,15 +143,13 @@ jobs:
           TF_VAR_project_name: "aws-devops-production-ready-infra"
           TF_VAR_ecr_image_tag: ${{ needs.build.outputs.image_tag }}
           TF_VAR_container_port: 3000
-          TF_VAR_listener_port: 80
+          TF_VAR_alb_listener_port: 80
           TF_VAR_aws_region: ${{ env.AWS_REGION }}
           TF_VAR_acm_certificate_domain_name: ${{ secrets.ACM_CERT_DOMAIN_NAME }}
         run: |
           ARTIFACT_NAME="tfplan-${{ github.sha }}"
           echo "artifact_name=${ARTIFACT_NAME}" >> $GITHUB_OUTPUT
-          terraform plan -out="${ARTIFACT_NAME}.out" \
-            -var="listener_port=80" \
-            -var="container_port=3000"
+          terraform plan -out="${ARTIFACT_NAME}.out"
 
       - name: Upload terraform plan artifact
         working-directory: terraform
