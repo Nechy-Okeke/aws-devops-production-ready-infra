@@ -8,12 +8,11 @@ yarn-error.log*
 
 # Terraform
 .terraform/
-terraform/.terraform/
 **/.terraform/
-terraform/.terraform.lock.hcl
 *.tfstate
 *.tfstate.*
-*.tfstate.backup
+crash.log
+terraform.tfvars
 
 # Terraform plans/artifacts (from CI)
 *.out
