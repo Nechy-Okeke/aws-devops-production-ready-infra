@@ -56,6 +56,12 @@ jobs:
           aws-region: ${{ env.AWS_REGION }}
 
       # Bootstrap Terraform backend state locking resources (S3 + DynamoDB)
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.5.0
+          terraform_wrapper: false
+
       - name: Terraform backend bootstrap
         working-directory: terraform/bootstrap
         env:
