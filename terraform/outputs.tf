@@ -10,7 +10,7 @@ output "alb_target_group_arn" {
 
 output "ecs_cluster_name" {
   description = "Name of the ECS cluster"
-  value       = module.ecs.ecs_cluster_name
+  value       = module.ecs.cluster_name
 }
 
 output "ecs_service_name" {
