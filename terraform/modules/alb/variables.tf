@@ -55,3 +55,9 @@ variable "acm_route53_zone_id" {
   description = "Optional Route53 hosted zone ID to perform DNS validation for ACM. If not set, HTTPS listener/certificate will be omitted (HTTP redirect remains)."
   default     = ""
 }
+
+variable "enable_deletion_protection" {
+  type        = bool
+  description = "If true, protects the ALB from deletion (may block CI/CD destroy). Set false for re-runnable CI/CD."
+  default     = false
+}
