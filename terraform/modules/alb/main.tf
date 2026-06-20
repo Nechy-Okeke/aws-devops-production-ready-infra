@@ -104,11 +104,27 @@ resource "aws_lb_listener" "http" {
   protocol          = "HTTP"
 
   default_action {
-    type = "redirect"
-    redirect {
-      port        = "443"
-      protocol    = "HTTPS"
-      status_code = "HTTP_301"
+    # When HTTPS/ACM isn't available, forward HTTP directly to the TG so ECS can attach.
+    # When HTTPS is available, redirect HTTP->HTTPS.
+    type = local.acm_can_validate ? "redirect" : "forward"
+
+    dynamic "redirect" {
+      for_each = local.acm_can_validate ? [1] : []
+      content {
+        port        = "443"
+        protocol    = "HTTPS"
+        status_code = "HTTP_301"
+      }
+    }
+
+    dynamic "forward" {
+      for_each = local.acm_can_validate ? [] : [1]
+      content {
+        target_group {
+          arn    = aws_lb_target_group.app.arn
+          weight = 1
+        }
+      }
     }
   }
 }

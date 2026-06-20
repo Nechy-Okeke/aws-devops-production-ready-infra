@@ -140,8 +140,8 @@ jobs:
       - name: Terraform init
         working-directory: terraform
         env:
-          TF_STATE_BUCKET: ${{ secrets.TERRAFORM_STATE_BUCKET }}
-          TF_LOCK_TABLE: ${{ secrets.TERRAFORM_LOCK_TABLE }}
+          TF_STATE_BUCKET: ${{ secrets.TF_STATE_BUCKET }}
+          TF_LOCK_TABLE: ${{ secrets.TF_LOCK_TABLE }}
           TF_REGION: ${{ secrets.AWS_REGION }}
         run: |
           terraform init \
@@ -211,9 +211,9 @@ jobs:
       - name: Terraform init
         working-directory: terraform
         env:
-          TF_STATE_BUCKET: ${{ secrets.TERRAFORM_STATE_BUCKET || 'aws-devops-production-ready-infra-tfstate-669890779296' }}
-          TF_LOCK_TABLE: ${{ secrets.TERRAFORM_LOCK_TABLE || 'aws-devops-production-ready-infra-tflock' }}
-          TF_REGION: ${{ secrets.AWS_REGION || 'us-east-1' }}
+          TF_STATE_BUCKET: ${{ secrets.TF_STATE_BUCKET }}
+          TF_LOCK_TABLE: ${{ secrets.TF_LOCK_TABLE }}
+          TF_REGION: ${{ secrets.AWS_REGION }}
         run: |
           terraform init \
             -backend-config="bucket=${TF_STATE_BUCKET}" \
@@ -235,8 +235,8 @@ jobs:
       - name: Terraform init
         working-directory: terraform
         env:
-          TF_STATE_BUCKET: ${{ secrets.TERRAFORM_STATE_BUCKET }}
-          TF_LOCK_TABLE: ${{ secrets.TERRAFORM_LOCK_TABLE }}
+          TF_STATE_BUCKET: ${{ secrets.TF_STATE_BUCKET }}
+          TF_LOCK_TABLE: ${{ secrets.TF_LOCK_TABLE }}
           TF_REGION: ${{ secrets.AWS_REGION }}
         run: |
           terraform init \
