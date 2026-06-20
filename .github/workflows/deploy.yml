@@ -243,19 +243,6 @@ jobs:
       # Terraform will reject it if the remote state changes (stale plan).
       # So we re-plan in this job immediately before apply.
 
-      - name: Terraform init
-        working-directory: terraform
-        env:
-          TF_STATE_BUCKET: ${{ secrets.TF_STATE_BUCKET }}
-          TF_LOCK_TABLE: ${{ secrets.TF_LOCK_TABLE }}
-          TF_REGION: ${{ secrets.AWS_REGION }}
-        run: |
-          terraform init \
-            -backend-config="bucket=${TF_STATE_BUCKET}" \
-            -backend-config="key=terraform/terraform.tfstate" \
-            -backend-config="region=${TF_REGION}" \
-            -backend-config="dynamodb_table=${TF_LOCK_TABLE}"
-
       - name: Download terraform plan artifact
         uses: actions/download-artifact@v4
         with:
@@ -279,6 +266,22 @@ jobs:
             -backend-config="key=terraform/terraform.tfstate" \
             -backend-config="region=${TF_REGION}" \
             -backend-config="dynamodb_table=${TF_LOCK_TABLE}"
+
+      - name: Import existing ECR repository into Terraform state (idempotent)
+        working-directory: terraform
+        env:
+          TF_VAR_project_name: "aws-devops-production-ready-infra"
+          AWS_REGION: ${{ secrets.AWS_REGION }}
+        run: |
+          set -euo pipefail
+          REPO_NAME="${TF_VAR_project_name}-app"
+          echo "Checking ECR repository ${REPO_NAME}..."
+          if aws ecr describe-repositories --repository-names "${REPO_NAME}" --region "${AWS_REGION}" >/dev/null 2>&1; then
+            echo "ECR repository exists; importing into Terraform state..."
+            terraform import "module.ecr.aws_ecr_repository.this" "${REPO_NAME}" || true
+          else
+            echo "ECR repository ${REPO_NAME} not found; skipping import."
+          fi
 
       - name: Terraform apply
         working-directory: terraform
