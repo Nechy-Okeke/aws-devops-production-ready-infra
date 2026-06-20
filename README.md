@@ -1,6 +1,7 @@
  Metrics + Health Node.js on AWS (ECS Fargate + ALB + ECR) — Production-ready DevOps Practical
 
-#This repo provisions and deploys a small Node.js service that exposes:
+
+This repo provisions and deploys a small Node.js service that exposes:
 - `GET /health` (liveness)
 - `GET /metrics` (Prometheus-compatible metrics)
 

@@ -2,10 +2,10 @@ name: deploy
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
 
 concurrency:
-  group: terraform-prod-${{ github.ref }}
+  group: terraform-prod-deploy
   cancel-in-progress: false
 
 permissions:
@@ -14,7 +14,8 @@ permissions:
 
 env:
   AWS_REGION: ${{ secrets.AWS_REGION || 'us-east-1' }}
-  ECR_REPOSITORY: ${{ secrets.ECR_REPOSITORY || 'metrics-health-service' }}
+  # Keep existing env vars, but ensure terraform uses correct project name & ECR repo below.
+  ECR_REPOSITORY: ${{ secrets.ECR_REPOSITORY || 'metrics-health-app' }}
   ECS_SERVICE_NAME: ${{ secrets.ECS_SERVICE_NAME || 'metrics-health-service' }}
   CONTAINER_NAME: ${{ secrets.CONTAINER_NAME || 'metrics-health-service' }}
 
@@ -83,6 +84,18 @@ jobs:
         id: meta
         run: echo "image_tag=${{ github.sha }}" >> $GITHUB_OUTPUT
 
+      - name: Create ECR repository if it doesn't exist
+        env:
+          ECR_REPOSITORY: aws-devops-production-ready-infra-app
+          AWS_REGION: us-east-1
+        run: |
+          aws ecr describe-repositories \
+            --repository-names "$ECR_REPOSITORY" \
+            --region "$AWS_REGION" 2>/dev/null || \
+          aws ecr create-repository \
+            --repository-name "$ECR_REPOSITORY" \
+            --region "$AWS_REGION"
+
       - name: Build and tag Docker image
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
@@ -106,6 +119,7 @@ jobs:
     needs: [build]
     outputs:
       tfplan_artifact: ${{ steps.plan_meta.outputs.artifact_name }}
+      image_tag: ${{ needs.build.outputs.image_tag }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -190,6 +204,23 @@ jobs:
           role-to-assume: arn:aws:iam::669890779296:role/github-actions-oidc
           aws-region: us-east-1
 
+      # Avoid applying a saved plan created earlier in the pipeline.
+      # Terraform will reject it if the remote state changes (stale plan).
+      # So we re-plan in this job immediately before apply.
+
+      - name: Terraform init
+        working-directory: terraform
+        env:
+          TF_STATE_BUCKET: ${{ secrets.TERRAFORM_STATE_BUCKET || 'aws-devops-production-ready-infra-tfstate-669890779296' }}
+          TF_LOCK_TABLE: ${{ secrets.TERRAFORM_LOCK_TABLE || 'aws-devops-production-ready-infra-tflock' }}
+          TF_REGION: ${{ secrets.AWS_REGION || 'us-east-1' }}
+        run: |
+          terraform init \
+            -backend-config="bucket=${TF_STATE_BUCKET}" \
+            -backend-config="key=terraform/terraform.tfstate" \
+            -backend-config="region=${TF_REGION}" \
+            -backend-config="dynamodb_table=${TF_LOCK_TABLE}"
+
       - name: Download terraform plan artifact
         uses: actions/download-artifact@v4
         with:
@@ -219,6 +250,10 @@ jobs:
         env:
           TF_VAR_project_name: "aws-devops-production-ready-infra"
           TF_VAR_aws_region: ${{ env.AWS_REGION }}
+          TF_VAR_ecr_image_tag: ${{ needs.terraform-plan.outputs.image_tag }}
+          TF_VAR_container_port: 3000
+          TF_VAR_alb_listener_port: 80
+          TF_VAR_acm_certificate_domain_name: ${{ secrets.ACM_CERT_DOMAIN_NAME }}
         run: |
           PLAN_FILE="tfplan-${GITHUB_SHA}.out"
           echo "Using plan file: ${PLAN_FILE}"
