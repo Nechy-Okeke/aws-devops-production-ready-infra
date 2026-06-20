@@ -3,11 +3,6 @@ variable "project_name" {
   description = "Project name prefix"
 }
 
-variable "aws_region" {
-  type        = string
-  description = "AWS region"
-}
-
 variable "force_delete_images" {
   type        = bool
   description = "When true, ECR repo can be destroyed even if images exist (useful for CI/CD re-runs)."
